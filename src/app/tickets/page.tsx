@@ -1,7 +1,10 @@
 'use client'
 import Button from '@mui/material/Button'
 import { useRouter } from 'next/navigation'
-import { DataGrid, GridRowsProp, GridColDef } from '@mui/x-data-grid'
+import { GridRowsProp, GridColDef } from '@mui/x-data-grid'
+import TableComponent from '@components/TableComponent'
+import { useEffect, useState } from 'react'
+import TableSkeleton from '@components/skeleton/TableSkeleton'
 
 const rows: GridRowsProp = [
   { id: 1, name: 'Data Grid', description: 'the Community version' },
@@ -16,6 +19,11 @@ const columns: GridColDef[] = [
 
 const TicketsPage = () => {
   const router = useRouter()
+  const [isLoadingLayout, setIsLoadingLayout] = useState<boolean>(true)
+
+  useEffect(() => {
+    setIsLoadingLayout(false)
+  }, [])
 
   return (
     <div className="flex flex-col gap-4">
@@ -29,9 +37,11 @@ const TicketsPage = () => {
         </Button>
       </div>
 
-      <div style={{ height: 300, width: '100%' }}>
-        <DataGrid rows={rows} columns={columns} />
-      </div>
+      {isLoadingLayout ? (
+        <TableSkeleton rows={5} columns={3} />
+      ) : (
+        <TableComponent rows={rows} columns={columns} />
+      )}
     </div>
   )
 }
