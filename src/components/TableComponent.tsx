@@ -1,4 +1,4 @@
-import { grey, orange } from '@mui/material/colors'
+import { blue, grey } from '@mui/material/colors'
 import { DataGrid } from '@mui/x-data-grid/DataGrid'
 import NoDataOverlay from './skeleton/NoDataOverlay'
 import type { DataGridProps } from '@mui/x-data-grid'
@@ -55,7 +55,7 @@ const TableComponent = ({
             maxHeight: '168px !important',
           },
           '& .MuiDataGrid-columnHeader': {
-            backgroundColor: orange[50],
+            backgroundColor: blue[50],
             borderRadius: 'unset !important',
             // height: 'unset !important',
           },

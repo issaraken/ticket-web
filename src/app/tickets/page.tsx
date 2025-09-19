@@ -1,29 +1,111 @@
 'use client'
 import Button from '@mui/material/Button'
 import { useRouter } from 'next/navigation'
-import { GridRowsProp, GridColDef } from '@mui/x-data-grid'
+import { GridColDef } from '@mui/x-data-grid'
 import TableComponent from '@components/TableComponent'
 import { useEffect, useState } from 'react'
 import TableSkeleton from '@components/skeleton/TableSkeleton'
-
-const rows: GridRowsProp = [
-  { id: 1, name: 'Data Grid', description: 'the Community version' },
-  { id: 2, name: 'Data Grid Pro', description: 'the Pro version' },
-  { id: 3, name: 'Data Grid Premium', description: 'the Premium version' },
-]
+import CardContent from '@mui/material/CardContent'
+import Card from '@mui/material/Card'
+import axiosInstance from '@/lib/axios'
+import { PerPageResponse } from '@/types/response.type'
+import { TicketListsDTO } from '@/types/ticket.type'
+import Autocomplete from '@mui/material/Autocomplete'
+import TextField from '@mui/material/TextField'
+import { TicketPriorityOptions, TicketStatusOptions } from '@/data/ticket.data'
+import type { GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
+import type { AutocompleteOptionType } from '@/types/common.type'
 
 const columns: GridColDef[] = [
-  { field: 'name', headerName: 'Product Name', width: 200 },
-  { field: 'description', headerName: 'Description', width: 300 },
+  {
+    field: 'id',
+    headerName: 'ID',
+    width: 70,
+    align: 'center',
+    headerAlign: 'center',
+  },
+  {
+    field: 'title',
+    headerName: 'Title',
+    flex: 1,
+    align: 'center',
+    headerAlign: 'center',
+  },
+  {
+    field: 'status',
+    headerName: 'Status',
+    width: 130,
+    align: 'center',
+    headerAlign: 'center',
+  },
+  {
+    field: 'priority',
+    headerName: 'Priority',
+    width: 130,
+    align: 'center',
+    headerAlign: 'center',
+  },
 ]
 
 const TicketsPage = () => {
   const router = useRouter()
   const [isLoadingLayout, setIsLoadingLayout] = useState<boolean>(true)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [ticketLists, setTicketLists] = useState<TicketListsDTO[]>([])
+  const [searchTxt, setSearchTxt] = useState<string>('')
+  const [status, setStatus] = useState<AutocompleteOptionType | null>(null)
+  const [priority, setPriority] = useState<AutocompleteOptionType | null>(null)
+  const [pagination, setPagination] = useState<GridPaginationModel>({
+    pageSize: 10,
+    page: 0,
+  })
+  const [sorting, setSorting] = useState<GridSortModel>([])
+  const [rowCount, setRowCount] = useState<number>(0)
+
+  const getTicketParams = () => {
+    const params = new URLSearchParams()
+    params.append('page', (pagination.page + 1).toString()) // MUI DataGrid เริ่มจาก 0 แต่ API อาจเริ่มจาก 1
+    params.append('pageSize', pagination.pageSize.toString())
+    if (sorting.length > 0) {
+      params.append('sortBy', sorting[0].field)
+      params.append('sortOrder', sorting[0].sort?.toUpperCase() || 'ASC')
+    }
+    if (searchTxt) params.append('search', searchTxt)
+    if (status?.value) params.append('status', status?.value ?? '')
+    if (priority?.value) params.append('priority', priority?.value ?? '')
+
+    return params
+  }
+
+  const fetchTickets = () => {
+    setIsLoading(true)
+    const params = getTicketParams()
+    axiosInstance
+      .get<PerPageResponse<TicketListsDTO[]>>(`/tickets?${params.toString()}`)
+      .then((response) => {
+        const result = response.data.data
+        setTicketLists(result?.data ?? [])
+        setRowCount(result?.pagination?.total ?? 0)
+      })
+      .finally(() => setIsLoading(false))
+  }
 
   useEffect(() => {
+    fetchTickets()
     setIsLoadingLayout(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    fetchTickets()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination, sorting])
+
+  const onClearFilter = () => {
+    setSearchTxt('')
+    setStatus(null)
+    setPriority(null)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -37,11 +119,108 @@ const TicketsPage = () => {
         </Button>
       </div>
 
-      {isLoadingLayout ? (
-        <TableSkeleton rows={5} columns={3} />
-      ) : (
-        <TableComponent rows={rows} columns={columns} />
-      )}
+      <Card>
+        <CardContent>
+          <div className="flex w-full flex-col gap-2">
+            <div className="flex flex-col gap-2 md:flex-row">
+              <TextField
+                label="title / description"
+                variant="outlined"
+                size="small"
+                fullWidth
+                value={searchTxt}
+                slotProps={{
+                  inputLabel: {
+                    shrink: true,
+                  },
+                }}
+                onChange={(e) => setSearchTxt(e.target.value)}
+                className="w-full! sm:w-1/3!"
+              />
+
+              <Autocomplete
+                size="small"
+                fullWidth
+                options={TicketStatusOptions ?? []}
+                value={status}
+                onChange={(_, newValue) => setStatus(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Status"
+                    slotProps={{
+                      inputLabel: {
+                        shrink: true,
+                      },
+                    }}
+                  />
+                )}
+                className="w-full! sm:w-1/3!"
+              />
+
+              <Autocomplete
+                size="small"
+                fullWidth
+                options={TicketPriorityOptions ?? []}
+                value={priority}
+                onChange={(_, newValue) => setPriority(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Priority"
+                    slotProps={{
+                      inputLabel: {
+                        shrink: true,
+                      },
+                    }}
+                  />
+                )}
+                className="w-full! sm:w-1/3!"
+              />
+            </div>
+
+            <div className="flex flex-row items-center justify-end gap-2 sm:flex-row">
+              <Button
+                size="small"
+                variant="contained"
+                className="w-1/2! sm:w-24!"
+                onClick={fetchTickets}
+                loading={isLoading}
+              >
+                ค้นหา
+              </Button>
+
+              <Button
+                size="small"
+                variant="outlined"
+                color="secondary"
+                onClick={onClearFilter}
+                className="w-1/2! sm:w-24!"
+                disabled={isLoading}
+              >
+                ยกเลิก
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+
+        {isLoadingLayout ? (
+          <TableSkeleton rows={5} columns={4} />
+        ) : (
+          <TableComponent
+            rows={ticketLists}
+            columns={columns}
+            loading={isLoading}
+            paginationMode={'server'}
+            paginationModel={pagination}
+            onPaginationModelChange={(model) => setPagination(model)}
+            rowCount={rowCount}
+            sortingMode="server"
+            sortModel={sorting}
+            onSortModelChange={setSorting}
+          />
+        )}
+      </Card>
     </div>
   )
 }
