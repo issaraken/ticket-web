@@ -13,39 +13,10 @@ import { TicketListsDTO } from '@/types/ticket.type'
 import Autocomplete from '@mui/material/Autocomplete'
 import TextField from '@mui/material/TextField'
 import { TicketPriorityOptions, TicketStatusOptions } from '@/data/ticket.data'
+import IconButton from '@mui/material/IconButton'
+import ModeEditOutlineIcon from '@mui/icons-material/ModeEditOutline'
 import type { GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
 import type { AutocompleteOptionType } from '@/types/common.type'
-
-const columns: GridColDef[] = [
-  {
-    field: 'id',
-    headerName: 'ID',
-    width: 70,
-    align: 'center',
-    headerAlign: 'center',
-  },
-  {
-    field: 'title',
-    headerName: 'Title',
-    flex: 1,
-    align: 'center',
-    headerAlign: 'center',
-  },
-  {
-    field: 'status',
-    headerName: 'Status',
-    width: 130,
-    align: 'center',
-    headerAlign: 'center',
-  },
-  {
-    field: 'priority',
-    headerName: 'Priority',
-    width: 130,
-    align: 'center',
-    headerAlign: 'center',
-  },
-]
 
 const TicketsPage = () => {
   const router = useRouter()
@@ -95,6 +66,56 @@ const TicketsPage = () => {
     setIsLoadingLayout(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const columns: GridColDef[] = [
+    {
+      field: 'id',
+      headerName: 'ID',
+      width: 70,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'title',
+      headerName: 'Title',
+      flex: 1,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 130,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'priority',
+      headerName: 'Priority',
+      width: 130,
+      align: 'center',
+      headerAlign: 'center',
+    },
+    {
+      field: 'actions',
+      headerName: 'จัดการ',
+      width: 100,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      renderCell: (params) => (
+        <IconButton
+          onClick={(e) => {
+            e.stopPropagation()
+            router.push(`/tickets/${params.id}`)
+          }}
+          size="small"
+        >
+          <ModeEditOutlineIcon fontSize="small" />
+        </IconButton>
+      ),
+    },
+  ]
 
   useEffect(() => {
     fetchTickets()
@@ -218,6 +239,10 @@ const TicketsPage = () => {
             sortingMode="server"
             sortModel={sorting}
             onSortModelChange={setSorting}
+            onRowClick={(params) => {
+              console.log('Row clicked:', params.row)
+              // router.push(`/tickets/${params.id}`)
+            }}
           />
         )}
       </Card>
