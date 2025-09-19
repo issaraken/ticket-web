@@ -17,6 +17,10 @@ import ModeEditOutlineIcon from '@mui/icons-material/ModeEditOutline'
 import type { PerPageResponse } from '@/types/response.type'
 import type { GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
 import type { AutocompleteOptionType } from '@/types/common.type'
+import Delete from '@mui/icons-material/Delete'
+import ConfirmationDialog from '@components/dialog/ConfirmationDialog'
+import { ConfirmationDialogType } from '@/enum/dialog.enum'
+import { toast } from 'sonner'
 
 const TicketsPage = () => {
   const router = useRouter()
@@ -32,6 +36,9 @@ const TicketsPage = () => {
   })
   const [sorting, setSorting] = useState<GridSortModel>([])
   const [rowCount, setRowCount] = useState<number>(0)
+  const [isOpenDialog, setIsOpenDialog] = useState<boolean>(false)
+  const [isDialogLoading, setIsDialogLoading] = useState<boolean>(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   const getTicketParams = () => {
     const params = new URLSearchParams()
@@ -79,6 +86,7 @@ const TicketsPage = () => {
       field: 'title',
       headerName: 'Title',
       flex: 1,
+      minWidth: 200,
       align: 'center',
       headerAlign: 'center',
     },
@@ -104,15 +112,23 @@ const TicketsPage = () => {
       headerAlign: 'center',
       sortable: false,
       renderCell: (params) => (
-        <IconButton
-          onClick={(e) => {
-            e.stopPropagation()
-            router.push(`/tickets/${params.id}`)
-          }}
-          size="small"
-        >
-          <ModeEditOutlineIcon fontSize="small" />
-        </IconButton>
+        <div className="flex w-full justify-center">
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(`/tickets/${params.id}`)
+            }}
+            size="small"
+          >
+            <ModeEditOutlineIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            onClick={() => onDelete(params.id as number)}
+            size="small"
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        </div>
       ),
     },
   ]
@@ -128,125 +144,156 @@ const TicketsPage = () => {
     setPriority(null)
   }
 
+  const onDelete = (id: number) => {
+    setDeleteId(id)
+    setIsOpenDialog(true)
+  }
+
+  const onConfirmDelete = (status: boolean) => {
+    if (!status) return setIsOpenDialog(false)
+
+    setIsDialogLoading(true)
+    axiosInstance
+      .delete(`/tickets/${deleteId}`)
+      .then(() => {
+        fetchTickets()
+        toast.success('ลบข้อมูลสำเร็จ !!')
+      })
+      .finally(() => {
+        setIsDialogLoading(false)
+        setIsOpenDialog(false)
+      })
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <span className="text-3xl font-semibold">Tickets</span>
-        <Button
-          variant="contained"
-          onClick={() => router.push('/tickets/create')}
-        >
-          เพิ่ม ticket
-        </Button>
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <span className="text-3xl font-semibold">Tickets</span>
+          <Button
+            variant="contained"
+            onClick={() => router.push('/tickets/create')}
+          >
+            เพิ่ม ticket
+          </Button>
+        </div>
+
+        <Card>
+          <CardContent>
+            <div className="flex w-full flex-col gap-2">
+              <div className="flex flex-col gap-2 md:flex-row">
+                <TextField
+                  label="title / description"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={searchTxt}
+                  slotProps={{
+                    inputLabel: {
+                      shrink: true,
+                    },
+                  }}
+                  onChange={(e) => setSearchTxt(e.target.value)}
+                  className="w-full! sm:w-1/3!"
+                />
+
+                <Autocomplete
+                  size="small"
+                  fullWidth
+                  options={TicketStatusOptions ?? []}
+                  value={status}
+                  onChange={(_, newValue) => setStatus(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Status"
+                      slotProps={{
+                        inputLabel: {
+                          shrink: true,
+                        },
+                      }}
+                    />
+                  )}
+                  className="w-full! sm:w-1/3!"
+                />
+
+                <Autocomplete
+                  size="small"
+                  fullWidth
+                  options={TicketPriorityOptions ?? []}
+                  value={priority}
+                  onChange={(_, newValue) => setPriority(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Priority"
+                      slotProps={{
+                        inputLabel: {
+                          shrink: true,
+                        },
+                      }}
+                    />
+                  )}
+                  className="w-full! sm:w-1/3!"
+                />
+              </div>
+
+              <div className="flex flex-row items-center justify-end gap-2 sm:flex-row">
+                <Button
+                  size="small"
+                  variant="contained"
+                  className="w-1/2! sm:w-24!"
+                  onClick={fetchTickets}
+                  loading={isLoading}
+                >
+                  ค้นหา
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="secondary"
+                  onClick={onClearFilter}
+                  className="w-1/2! sm:w-24!"
+                  disabled={isLoading}
+                >
+                  ยกเลิก
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+
+          {isLoadingLayout ? (
+            <TableSkeleton rows={5} columns={4} />
+          ) : (
+            <TableComponent
+              rows={ticketLists}
+              columns={columns}
+              loading={isLoading}
+              paginationMode={'server'}
+              paginationModel={pagination}
+              onPaginationModelChange={(model) => setPagination(model)}
+              rowCount={rowCount}
+              sortingMode="server"
+              sortModel={sorting}
+              onSortModelChange={setSorting}
+              onRowClick={(params) => {
+                console.log('Row clicked:', params.row)
+                // router.push(`/tickets/${params.id}`)
+              }}
+            />
+          )}
+        </Card>
       </div>
 
-      <Card>
-        <CardContent>
-          <div className="flex w-full flex-col gap-2">
-            <div className="flex flex-col gap-2 md:flex-row">
-              <TextField
-                label="title / description"
-                variant="outlined"
-                size="small"
-                fullWidth
-                value={searchTxt}
-                slotProps={{
-                  inputLabel: {
-                    shrink: true,
-                  },
-                }}
-                onChange={(e) => setSearchTxt(e.target.value)}
-                className="w-full! sm:w-1/3!"
-              />
-
-              <Autocomplete
-                size="small"
-                fullWidth
-                options={TicketStatusOptions ?? []}
-                value={status}
-                onChange={(_, newValue) => setStatus(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Status"
-                    slotProps={{
-                      inputLabel: {
-                        shrink: true,
-                      },
-                    }}
-                  />
-                )}
-                className="w-full! sm:w-1/3!"
-              />
-
-              <Autocomplete
-                size="small"
-                fullWidth
-                options={TicketPriorityOptions ?? []}
-                value={priority}
-                onChange={(_, newValue) => setPriority(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Priority"
-                    slotProps={{
-                      inputLabel: {
-                        shrink: true,
-                      },
-                    }}
-                  />
-                )}
-                className="w-full! sm:w-1/3!"
-              />
-            </div>
-
-            <div className="flex flex-row items-center justify-end gap-2 sm:flex-row">
-              <Button
-                size="small"
-                variant="contained"
-                className="w-1/2! sm:w-24!"
-                onClick={fetchTickets}
-                loading={isLoading}
-              >
-                ค้นหา
-              </Button>
-
-              <Button
-                size="small"
-                variant="outlined"
-                color="secondary"
-                onClick={onClearFilter}
-                className="w-1/2! sm:w-24!"
-                disabled={isLoading}
-              >
-                ยกเลิก
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-
-        {isLoadingLayout ? (
-          <TableSkeleton rows={5} columns={4} />
-        ) : (
-          <TableComponent
-            rows={ticketLists}
-            columns={columns}
-            loading={isLoading}
-            paginationMode={'server'}
-            paginationModel={pagination}
-            onPaginationModelChange={(model) => setPagination(model)}
-            rowCount={rowCount}
-            sortingMode="server"
-            sortModel={sorting}
-            onSortModelChange={setSorting}
-            onRowClick={(params) => {
-              console.log('Row clicked:', params.row)
-              // router.push(`/tickets/${params.id}`)
-            }}
-          />
-        )}
-      </Card>
-    </div>
+      <ConfirmationDialog
+        open={isOpenDialog}
+        onClose={onConfirmDelete}
+        isLoading={isDialogLoading}
+        textContent="ลบข้อมูลที่อยู่ !!"
+        type={ConfirmationDialogType.Danger}
+      />
+    </>
   )
 }
 
