@@ -1,15 +1,15 @@
 import { TicketPriority, TicketStatus } from '@/enum/ticket.enum'
 
 export const TicketStatusOptions = [
-  ...Object.values(TicketStatus).map((status) => ({
-    value: status,
-    label: status,
+  ...Object.values(TicketStatus).map((v) => ({
+    value: v,
+    label: v,
   })),
 ]
 
 export const TicketPriorityOptions = [
-  ...Object.values(TicketPriority).map((status) => ({
-    value: status,
-    label: status,
+  ...Object.values(TicketPriority).map((v) => ({
+    value: v,
+    label: v,
   })),
 ]
